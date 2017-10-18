@@ -281,6 +281,8 @@ class World {
 		
 		// this.scene.add(lines);
 		
+		// =======================
+		
 		var segments = 10;
 		
 		var geometry = new THREE.Geometry();
@@ -304,7 +306,7 @@ class World {
 	
 	getSide(y) {
 		const leftBound = -50;
-		const rightBound = 50;
+		const rightBound = 30;
 		const width = 50;
 		
 		if (Math.random() >= 0.5) {
@@ -321,35 +323,41 @@ class World {
 	};
 	
 	get STEP() {
-		return 10;
+		return 25;
 	}
 	
 	createSteps() {
 		var segments = 10;
+		let y = 150;
 		
-		var geometry = new THREE.Geometry();
-		geometry.dynamic = true;
-		var material = new THREE.LineBasicMaterial({
-			color: 0xffffff,
-		});
+		const positions = new Float32Array(segments * 3 * 2);
 		
-		
-		
-		let y = 0;
-		
-		for ( let i = 0; i < segments; i ++ ) {
+		for ( let i = 0; i < segments; i+=2 ) {
 			const [a, b] = this.getSide(y);
-			geometry.vertices.push(a, b);
+			
+			positions[i * 3 + 0] = a.x;
+			positions[i * 3 + 1] = a.y;
+			positions[i * 3 + 2] = a.z;
+			positions[i * 3 + 3] = b.x;
+			positions[i * 3 + 4] = b.y;
+			positions[i * 3 + 5] = b.z;
 			
 			y += this.STEP;
 		}
+		
+		var geometry = new THREE.BufferGeometry();
+		
+		geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setDynamic( true ) );
+		
+		var material = new THREE.LineBasicMaterial({
+			color: 0xffffff,
+			transparent: true
+		});
 		
 		const lines = new THREE.LineSegments(geometry, material);
 		this.scene.add(lines);
 		
 		this.steps = lines;
-		//return lines;
-		//console.log(lines)
 	}
 	
 	
@@ -359,37 +367,17 @@ class World {
 		let minPointers = []
 		let maxVal = 0;
 		
-		// хер знает как правильно итерировать линии...
-		for (let i = 0; i < this.steps.geometry.vertices.length; i += 2) {
-			const start = this.steps.geometry.vertices[i];
-			const end = this.steps.geometry.vertices[i + 1];
+		for (let i = 0; i < 10; i += 2) {
+			this.steps.geometry.attributes.position.array[i * 3 + 1] -= 0.1;
+			this.steps.geometry.attributes.position.array[i * 3 + 4] -= 0.1;
 			
-			start.y -= 0.1;
-			end.y -= 0.1;
-			
-			if (start.y < -100) minPointers.push({start, end});
-			
-			if (start.y > maxVal) {
-				maxVal = start.y;
+			if (this.steps.geometry.attributes.position.array[i * 3 + 1] < -100) {
+				this.steps.geometry.attributes.position.array[i * 3 + 1] = 100;
+				this.steps.geometry.attributes.position.array[i * 3 + 4] = 100;
 			}
 		}
 		
-		if (minPointers.length > 0) {
-			minPointers.forEach(({start, end}) => {
-				start.y = maxVal + this.STEP;
-				end.y = maxVal + this.STEP;
-				
-				const [a, b] = this.getSide(start.y);
-				start.x = a.x;
-				start.y = a.y;
-				
-				end.x = b.x;
-				end.y = b.y;
-			});
-			minPointers = [];
-		}
-		
-		this.steps.geometry.verticesNeedUpdate = true;
+		this.steps.geometry.attributes.position.needsUpdate = true;
 	}
 }
 
@@ -398,6 +386,14 @@ class Agent {
 		this.vel = {x: 0, y: 0};
 		this.points = o.points;
 		this.lines = o.lines;
+		
+		const c = [this.points.position.x, this.points.position.y];
+		const N = 10;
+		
+		this.sensorDirections = _.times(N).map(i => {
+			const [x, y] = t.crt2xy(c, 50, i / (N-1));
+			return new THREE.Vector3(x, y, 0).normalize();
+		});
 	}
 	
 	setVel(direction) {
@@ -411,6 +407,21 @@ class Agent {
 		this.lines.position.x += this.vel.x;
 		this.lines.position.needsUpdate = true
 	}
+	
+	checkSensors() {
+		const raycaster = new THREE.Raycaster(
+			this.points.position,
+			new THREE.Vector3(0, 0, 0)
+		);
+		raycaster.far = 50;
+		
+		const vision = this.sensorDirections.map(direction => {
+			raycaster.set(this.points.position, direction);
+			return raycaster.intersectObject(this.world.steps, true).length > 0 ? 1 : 0;
+		});
+		
+		return vision;
+	}
 }
 
 function onWindowResize() {
@@ -423,6 +434,48 @@ function onWindowResize() {
 const world = new World();
 const borders = world.createSteps();
 const agent = new Agent(world.createAgent());
+agent.world = world;
+
+function createLine(coords) {
+	var geometry = new THREE.Geometry();
+	geometry.dynamic = true;
+	var material = new THREE.LineBasicMaterial({
+		color: 0xffffff,
+	});
+	
+	coords.forEach(({x, y}) => {
+		geometry.vertices.push(
+			new THREE.Vector3(0, 0, 0),
+			new THREE.Vector3(x, y, 0)
+		);
+	})
+	
+	const lines = new THREE.LineSegments(geometry, material);
+	world.scene.add(lines);
+	return lines;
+}
+// const l = createLine();
+
+// function createRay() {
+// 	const ray = new THREE.Ray(
+// 		new THREE.Vector3(0, 0, 0),
+// 		new THREE.Vector3(10, 10, 0).normalize()
+// 	);
+// 	const d = ray.distanceSqToSegment(l.geometry.vertices[0], l.geometry.vertices[1]);
+// 	console.log(d);
+// }
+
+// const raycaster = new THREE.Raycaster(
+// 	new THREE.Vector3(0, 0, 0),
+// 	new THREE.Vector3(10, 10, 0).normalize()
+// );
+// raycaster.far = 5;
+
+// console.log(raycaster.far);
+// //raycaster.linePrecision = 100;
+// const res = raycaster.intersectObject(l, true);
+// console.log(res)
+
 
 
 let keyPressed = false;
@@ -439,7 +492,15 @@ document.addEventListener('keyup', e => {
 	agent.setVel(0);
 });
 
+// const dirs = agent.sensorDirections
+// 	.map(direction => ({x: direction.x*50, y: direction.y*50}));
+// createLine(dirs);
+
+world.steps.geometry.center()
 world.animate(() => {
+	const vision = agent.checkSensors();
+	if (vision.some(i => i)) console.log(vision);
+	
 	agent.move();
 	world.moveSteps();
 });

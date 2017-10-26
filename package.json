@@ -1,0 +1,14 @@
+{
+  "name": "GPThree",
+  "version": "0.0.0",
+  "description": "Test",
+  "main": "index.js",
+  "author": "Alexander Pezikov",
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack"
+  },
+  "devDependencies": {
+    "webpack": "^3.8.1"
+  }
+}

@@ -1,24 +1,12 @@
 'use strict';
-if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-var sphere;
-var noise = [];
-var WIDTH = window.innerWidth;
-var HEIGHT = window.innerHeight;
-
-
-function onWindowResize() {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-	this.renderer.setSize( window.innerWidth, window.innerHeight );
-}
-
+import World from './world';
+import Agent from './agent';
 
 const world = new World();
 const borders = world.createSteps();
 const agent = new Agent(world);
 agent.world = world;
-
 
 let keyPressed = false;
 document.addEventListener('keydown', e => {
@@ -34,6 +22,19 @@ document.addEventListener('keyup', e => {
 	agent.setVel(0);
 });
 
+
+function __computeFintess(world, agent) {
+	// надо:
+	// - выбрать нижнюю ступеньку
+	// - s0 = расстояние от проекции центра ступеньки на ось X агента на шаге i
+	// - s1 = расстояние от проекции центра ступеньки на ось X агента на шаге i + 1
+	// fitness = s1 > s0 ? 1 : -1
+	// как только ступенька опустилась ниже оси X - выбираем следующую ступеньку
+	
+	
+}
+
+
 function computeFintess(world, agent) {
 	// если агент столкнулся со ступенькой - наказание и перезапуск
 	// если ступенька достигла агента y агента и не пересекла по x - поощрение
@@ -42,6 +43,8 @@ function computeFintess(world, agent) {
 	// если глаза видят ступеньку и расстояние уменьшается - наказание
 	// если глаза видят ступеньку и расстояние увеличивается - поощрение
 	//const activeSensors = agent.sensors.filter(sensor => sensor);
+	
+	// это совершенно дурацкая fitness-функция
 	
 	const good = 1.0;
 	const bad = -1.0;
@@ -64,6 +67,7 @@ function computeFintess(world, agent) {
 }
 
 world.steps.geometry.center()
+
 world.animate(() => {
 	const vision = agent.checkSensors();
 	const act = agent.getAction(vision);

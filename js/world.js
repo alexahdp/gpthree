@@ -1,40 +1,16 @@
 'use strict';
 
-const vertexshader = `
-	uniform float amplitude;
-	attribute float size;
-	attribute vec3 customColor;
-	varying vec3 vColor;
-	varying float pSize;
-	
-	void main() {
-		vColor = customColor;
-		vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-		gl_PointSize = size * ( 300.0 / -mvPosition.z );
-		gl_Position = projectionMatrix * mvPosition;
-		pSize = gl_PointSize;
-	}
-`;
+import * as THREE from './lib/three';
+import * as Stats from './lib/stats.min';
 
-const fragmentshader = `
-	uniform vec3 color;
-	uniform sampler2D texture;
-	varying vec3 vColor;
-	varying float pSize;
-	
-	void main() {
-		//gl_FragColor = vec4( color * vColor, 1.0 );
-		//gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
-		
-		vec3 N;
-		N.xy = gl_PointCoord.xy*vec2(2.0, -2.0) + vec2(-1.0, 1.0);
-		float mag = dot(N.xy, N.xy);
-		if (mag > 1.0) discard;
-		gl_FragColor = vec4( 1,1,1,1.0 - mag );
-		if ( ( pSize - mag * pSize ) > 4.0 ) discard;
-		gl_FragColor = vec4( vColor, 1.0 );
-	}
-`;
+var WIDTH = window.innerWidth;
+var HEIGHT = window.innerHeight;
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	this.renderer.setSize( window.innerWidth, window.innerHeight );
+}
 
 
 class World {
@@ -62,7 +38,8 @@ class World {
 	}
 	
 	animate(cb) {
-		requestAnimationFrame(() => this.animate(cb));
+		//requestAnimationFrame(() => this.animate(cb));
+		setTimeout(() => this.animate(cb), 0);
 		cb.call(this);
 		this.render();
 		this.stats.update();
@@ -347,3 +324,5 @@ class World {
 		this.steps.geometry.attributes.position.needsUpdate = true;
 	}
 }
+
+export default World;

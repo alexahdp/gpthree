@@ -1,6 +1,47 @@
 'use strict';
 
-const VISION_DIST = 15;
+import * as THREE from './lib/three';
+import * as _ from './lib/lodash.min';
+import RL from './lib/rl';
+import t from './t';
+
+const VISION_DIST = 50;
+
+const vertexshader = `
+	uniform float amplitude;
+	attribute float size;
+	attribute vec3 customColor;
+	varying vec3 vColor;
+	varying float pSize;
+	
+	void main() {
+		vColor = customColor;
+		vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+		gl_PointSize = size * ( 300.0 / -mvPosition.z );
+		gl_Position = projectionMatrix * mvPosition;
+		pSize = gl_PointSize;
+	}
+`;
+
+const fragmentshader = `
+	uniform vec3 color;
+	uniform sampler2D texture;
+	varying vec3 vColor;
+	varying float pSize;
+	
+	void main() {
+		//gl_FragColor = vec4( color * vColor, 1.0 );
+		//gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+		
+		vec3 N;
+		N.xy = gl_PointCoord.xy*vec2(2.0, -2.0) + vec2(-1.0, 1.0);
+		float mag = dot(N.xy, N.xy);
+		if (mag > 1.0) discard;
+		gl_FragColor = vec4( 1,1,1,1.0 - mag );
+		if ( ( pSize - mag * pSize ) > 4.0 ) discard;
+		gl_FragColor = vec4( vColor, 1.0 );
+	}
+`;
 
 const spec = {}
 spec.update = 'qlearn'; // qlearn | sarsa
@@ -151,3 +192,5 @@ class Agent {
 		this.brain.learn(fit);
 	}
 }
+
+export default Agent;

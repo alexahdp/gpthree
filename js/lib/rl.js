@@ -1531,4 +1531,4 @@ global.DQNAgent = DQNAgent;
 //global.DeterministPG = DeterministPG;
 })(RL);
 
-
+export default RL;

@@ -1,4 +1,7 @@
+"use strict";
+
 import { THREE } from "./lib/three.js";
+import t from "./t.js";
 
 export class Sphere {
   vel = {
@@ -8,7 +11,8 @@ export class Sphere {
   constructor({ scene }) {
     this.scene = scene;
     const geometry = new THREE.SphereBufferGeometry( 5, 32, 32 );
-    const material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+    const material = new THREE.MeshBasicMaterial( {color: t.t2rgb(0.8).toString()} );
+    
     this.mesh = new THREE.Mesh( geometry, material );
     this.mesh._parent = this;
     this.mesh.position.x = 50;

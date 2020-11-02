@@ -29,7 +29,13 @@ function onWindowResize() {
 }
 window.addEventListener("resize", onWindowResize, false);
 
-const agent = new Agent({ scene });
+const agents = [];
+for (let i = 0; i < 3; i++) {
+  const agent = new Agent({ scene });
+  agent.setPosition(Math.random() * 100 - 50, Math.random() * 100 - 50);
+  agents.push(agent);
+}
+
 const food = [];
 for (let i = 0; i < 5; i++) {
   food.push(new Sphere({ scene }));
@@ -37,25 +43,26 @@ for (let i = 0; i < 5; i++) {
 
 const env = new Env({
   scene,
-  agent,
   food,
 })
 
 const cheatSteps = 4;
 (function animate() {
   for (let i = 0; i < cheatSteps; i++) {
-    const s1 = env.getState();
+    for (let agent of agents) {
+      const s1 = env.getState(agent);
 
-    const action = agent.getAction([
-      s1.x,
-      s1.y,
-      ...s1.vision.map(v => v ? [1, v.x, v.y] : [0, 0, 0]).flat(),
-    ]);
-    agent.move(action);
+      const action = agent.getAction([
+        s1.x,
+        s1.y,
+        ...s1.vision.map(v => v ? [1, v.x, v.y] : [0, 0, 0]).flat(),
+      ]);
+      agent.move(action);
 
-    const s2 = env.getState();
-    const r = env.computeReward(s1, s2)
-    agent.learn(r);
+      const s2 = env.getState(agent);
+      const r = env.computeReward(s1, s2)
+      agent.learn(r);
+    }
     food.forEach(foodItem => foodItem.move());
 
     renderer.render(scene, camera);

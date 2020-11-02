@@ -93,7 +93,9 @@ export class Agent {
 		const points = new THREE.Points( geometry, material );
 		o.scene.add(points);
 		
-		var segments = 30;
+    var segments = 30;
+    this.eyes = segments;
+
 		
 		var geometry = new THREE.Geometry();
 		var material = new THREE.LineBasicMaterial({ color: 0xffffff });
@@ -147,7 +149,15 @@ export class Agent {
 	
 	setVel(direction) {
 		this.vel.x = direction;
-	}
+  }
+  
+  setPosition(x, y) {
+    this.points.position.x = x;
+    this.points.position.y = y;
+    this.lines.position.x = x;
+    this.lines.position.y = y;
+    // this.points.position.needsUpdate = true
+  }
 	
 	
 	move(action) {

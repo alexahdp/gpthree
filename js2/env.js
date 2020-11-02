@@ -1,15 +1,14 @@
 import t from "./t.js";
 
 export class Env {
-  constructor({ scene, agent, food }) {
+  constructor({ scene, food }) {
     this.scene = scene;
-    this.agent = agent;
     this.food = food;
   }
 
-  getState() {
-    const visions = this.food.map(foodItem => this.agent.checkSensors(foodItem.mesh));
-    const vision = Array(visions[0].length);
+  getState(agent) {
+    const visions = this.food.map(foodItem => agent.checkSensors(foodItem.mesh));
+    const vision = Array(agent.sensorDirections.length);
     for (let i = 0; i < vision.length; i++) {
       vision[i] = null;
       for (const v of visions) {
@@ -18,8 +17,8 @@ export class Env {
     }
     
     return {
-      x: this.agent.points.position.x,
-      y: this.agent.points.position.y,
+      x: agent.points.position.x,
+      y: agent.points.position.y,
       vision,
     };
   }

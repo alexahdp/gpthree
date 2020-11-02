@@ -203,7 +203,7 @@ export class Agent {
     // vision[i].object.position
     // console.log(vision)
 
-    return vision;
+    return vision.map(v => v ? ({ x: v.object.position.x, y: v.object.position.y, v }) : null);
 	}
 	
 	

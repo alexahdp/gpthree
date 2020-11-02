@@ -1,34 +1,43 @@
 import { THREE } from "./lib/three.js";
 
 export class Sphere {
+  vel = {
+    x: Math.random() - 0.5,
+    y: Math.random() - 0.5,
+  }
   constructor({ scene }) {
+    this.scene = scene;
     const geometry = new THREE.SphereBufferGeometry( 5, 32, 32 );
     const material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
-    this.sphere = new THREE.Mesh( geometry, material );
-    this.sphere.vel = {
-      x: 0.7,
-      y: 0.5,
-    };
-    this.sphere.position.x = 50;
-    this.sphere.position.y = 0;
-    scene.add( this.sphere );
+    this.mesh = new THREE.Mesh( geometry, material );
+    this.mesh._parent = this;
+    this.mesh.position.x = 50;
+    this.mesh.position.y = 0;
+    this.scene.add( this.mesh );
+  }
+
+  destroy() {
+    const object = this.scene.getObjectByProperty( 'uuid', this.mesh.uuid );
+    object.geometry.dispose();
+    object.material.dispose();
+    this.scene.remove( object );
   }
 
   move() {
-    this.sphere.position.x += this.sphere.vel.x;
-    this.sphere.position.y += this.sphere.vel.y;
+    this.mesh.position.x += this.vel.x;
+    this.mesh.position.y += this.vel.y;
 
-    if (this.sphere.position.y > 100) {
-      this.sphere.vel.y = - this.sphere.vel.y;
+    if (this.mesh.position.y > 100) {
+      this.vel.y = - this.vel.y;
     }
-    else if (this.sphere.position.y < -100) {
-      this.sphere.vel.y = - this.sphere.vel.y;
+    else if (this.mesh.position.y < -100) {
+      this.vel.y = - this.vel.y;
     }
-    if (this.sphere.position.x > 250) {
-      this.sphere.vel.x = - this.sphere.vel.x;
+    if (this.mesh.position.x > 250) {
+      this.vel.x = - this.vel.x;
     }
-    else if (this.sphere.position.x < -250) {
-      this.sphere.vel.x = - this.sphere.vel.x;
+    else if (this.mesh.position.x < -250) {
+      this.vel.x = - this.vel.x;
     }
   }
 }

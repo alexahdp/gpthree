@@ -2,159 +2,89 @@
 
 import { THREE } from "./lib/three.js";
 import times from "./lib/lodash/times.js";
+import { Points } from "./points.js";
+import { Lines } from "./lines.js";
 import RL from "./lib/rl.js";
 import t from "./t.js";
-const VISION_DIST = 50;
 
-const vertexshader = `
-	uniform float amplitude;
-	attribute float size;
-	attribute vec3 customColor;
-	varying vec3 vColor;
-	varying float pSize;
-	
-	void main() {
-		vColor = customColor;
-		vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-		gl_PointSize = size * ( 300.0 / -mvPosition.z );
-		gl_Position = projectionMatrix * mvPosition;
-		pSize = gl_PointSize;
-	}
-`;
+const VISION_DIST = 20;
 
-const fragmentshader = `
-	uniform vec3 color;
-	uniform sampler2D texture;
-	varying vec3 vColor;
-	varying float pSize;
-	
-	void main() {
-		//gl_FragColor = vec4( color * vColor, 1.0 );
-		//gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
-		
-		vec3 N;
-		N.xy = gl_PointCoord.xy*vec2(2.0, -2.0) + vec2(-1.0, 1.0);
-		float mag = dot(N.xy, N.xy);
-		if (mag > 1.0) discard;
-		gl_FragColor = vec4( 1,1,1,1.0 - mag );
-		if ( ( pSize - mag * pSize ) > 4.0 ) discard;
-		gl_FragColor = vec4( vColor, 1.0 );
-	}
-`;
-
-const spec = {};
-spec.update = "qlearn"; // qlearn | sarsa
-spec.gamma = 0.9; // discount factor, [0, 1)
-spec.epsilon = 0.2; // initial epsilon for epsilon-greedy policy, [0, 1)
-spec.alpha = 0.005; // value function learning rate
-spec.experience_add_every = 5; // number of time steps before we add another experience to replay memory
-spec.experience_size = 10000; // size of experience
-spec.learning_steps_per_iteration = 5;
-spec.tderror_clamp = 1.0; // for robustness
-spec.num_hidden_units = 100; // number of neurons in hidden layer
-
-const N = 20; // количество глаз
+const spec = {
+  update: "qlearn", // qlearn | sarsa
+  gamma: 0.9, // discount factor, [0, 1)
+  epsilon: 0.2, // initial epsilon for epsilon-greedy policy, [0, 1)
+  alpha: 0.005, // value function learning rate
+  experience_add_every: 5, // number of time steps before we add another experience to replay memory
+  experience_size: 10000, // size of experience
+  learning_steps_per_iteration: 5,
+  tderror_clamp: 1.0, // for robustness
+  num_hidden_units: 100, // number of neurons in hidden layer
+};
 
 export class Agent {
   constructor(o) {
-    this.scene = o.scene;
-    const positions = new Float32Array(3);
-    const colors = new Float32Array(3);
-    const sizes = new Float32Array(1);
+    /** количество исходящих сенсоров */
+    this.eyes = 30;
 
-    const vertex = new THREE.Vector3(0, 0, 0);
-    const color = new THREE.Color(0x34dd11);
-
-    vertex.toArray(positions, 0);
-
-    color.toArray(colors, 0);
-    sizes[0] = 10;
-
-    const pointGeometry = new THREE.BufferGeometry();
-    pointGeometry.addAttribute(
-      "position",
-      new THREE.BufferAttribute(positions, 3)
-    );
-    pointGeometry.addAttribute(
-      "customColor",
-      new THREE.BufferAttribute(colors, 3)
-    );
-    pointGeometry.addAttribute("size", new THREE.BufferAttribute(sizes, 1));
-
-    const pointMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        amplitude: { value: 1.0 },
-        // color: { value: new THREE.Color(0xffffff) },
-        // texture: {
-        //   value: new THREE.TextureLoader().load("/sprites/spark1.png"),
-        // },
-      },
-      vertexShader: vertexshader,
-      fragmentShader: fragmentshader,
-
-      blending: THREE.AdditiveBlending,
-      depthTest: false,
-      transparent: true,
-    });
-
-    const points = new THREE.Points(pointGeometry, pointMaterial);
-    o.scene.add(points);
-
-    const segments = 30;
-    this.eyes = segments;
-
+    /** жизненная энергия */
     this.energy = 1;
 
-    const lineGeometry = new THREE.Geometry();
-    
-    const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-    this.lineMaterial = lineMaterial;
-
-    const r = VISION_DIST;
-    const c = [0, 0];
-    for (let i = 0; i < segments; i++) {
-      const [x, y] = t.crt2xy(c, r, i / (segments - 1));
-      lineGeometry.vertices.push(
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(x, y, 0)
-      );
-    }
-
-    const lines = new THREE.LineSegments(lineGeometry, lineMaterial);
-    o.scene.add(lines);
-
     this.vel = { x: 0, y: 0 };
-    this.points = points;
-    this.lines = lines;
+    this.vel.x = 2;
+    this.vel.y = 2;
 
-    this.reward_bonus = 0.0; // эта шняга никак не используется - почему???
+    // эта шняга никак не используется - почему???
+    this.reward_bonus = 0.0;
+
+    // ???
     this.digestion_signal = 0.0;
 
-    this.sensorDirections = times(N).map((i) => {
-      const [x, y] = t.crt2xy(c, 50, i / (N - 1));
+    // this.num_states = N * 2;
+
+    this.num_states = 4;
+
+    /**
+     * действия, которые может совершать агент
+     * влево, вправо, вниз, вверх, на месте
+     **/
+    this.actions = [0, 1, 2, 4, 5];
+
+    // ???
+    this.actionsMap = [0, -0.5, 0.5];
+
+    const c = [0, 0];
+
+    this.scene = o.scene;
+
+    this.points = new Points();
+    o.scene.add(this.points);
+
+    this.lines = new Lines({
+      visionDist: VISION_DIST,
+      segmentsCount: this.eyes,
+    });
+    o.scene.add(this.lines);
+
+    this.sensorDirections = times(this.eyes).map((i) => {
+      const [x, y] = t.crt2xy(c, 50, i / (this.eyes - 1));
       return new THREE.Vector3(x, y, 0).normalize();
     });
 
-    // this.num_states = N * 2;
-    this.num_states = 4;
-    this.actions = [0, 1, 2, 4, 5]; // влево, вправо, вниз, вверх, на месте
-    this.actionsMap = [0, -0.5, 0.5];
-
-    this.brain = new RL.DQNAgent(this, spec); // give agent a TD brain
-
-    this.vel.x = 2;
-    this.vel.y = 2;
+    this.brain = new RL.DQNAgent(this, spec);
   }
 
   destroy() {
-    const linesObject = this.scene.getObjectByProperty( 'uuid', this.lines.uuid );
+    const linesObject = this.scene.getObjectByProperty("uuid", this.lines.uuid);
     linesObject.geometry.dispose();
     linesObject.material.dispose();
-    this.scene.remove( linesObject );
-    const pointsObject = this.scene.getObjectByProperty( 'uuid', this.points.uuid );
+    this.scene.remove(linesObject);
+    const pointsObject = this.scene.getObjectByProperty(
+      "uuid",
+      this.points.uuid
+    );
     pointsObject.geometry.dispose();
     pointsObject.material.dispose();
-    this.scene.remove( pointsObject );
+    this.scene.remove(pointsObject);
   }
 
   getNumStates() {
@@ -200,12 +130,12 @@ export class Agent {
       // console.log('no action');
     }
 
-    this.energy -= 0.001;
+    this.energy -= 0.0005;
     if (this.energy < 0) this.energy = 0;
     const col = t.t2rgb(this.energy);
-    this.lineMaterial.color.r = col[0] / 255;
-    this.lineMaterial.color.g = col[1] / 255;
-    this.lineMaterial.color.b = col[2] / 255;
+    this.lines.lineMaterial.color.r = col[0] / 255;
+    this.lines.lineMaterial.color.g = col[1] / 255;
+    this.lines.lineMaterial.color.b = col[2] / 255;
   }
 
   checkSensors(sphere) {

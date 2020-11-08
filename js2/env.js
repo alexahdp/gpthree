@@ -7,7 +7,6 @@ export class Env {
   }
 
   getState(agent) {
-    console.log(agent)
     // необходимо выполнять зрительный проход для каждой
     // частицы пищи в отдельности
     const visions = this.food.map((foodItem) =>
@@ -57,7 +56,7 @@ export class Env {
           const j = this.food.indexOf(minv.v.object._parent);
           minv.v.object._parent.destroy();
           this.food.splice(j, 1);
-          agent.energy = 1;
+          agent.energy += 0.5;
           return 10;
         }
         return 1;

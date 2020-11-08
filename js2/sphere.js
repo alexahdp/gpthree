@@ -5,8 +5,8 @@ import t from "./t.js";
 
 export class Sphere {
   vel = {
-    x: Math.random() - 0.5,
-    y: Math.random() - 0.5,
+    x: (Math.random() - 0.5) / 4,
+    y: (Math.random() - 0.5) / 4,
   }
   constructor({ scene }) {
     this.scene = scene;
@@ -25,6 +25,11 @@ export class Sphere {
     object.geometry.dispose();
     object.material.dispose();
     this.scene.remove( object );
+  }
+
+  setPosition(x, y) {
+    this.mesh.position.x = x;
+    this.mesh.position.y = y;
   }
 
   move() {
